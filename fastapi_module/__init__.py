@@ -1,0 +1,1 @@
+from fastapi_module.collection.collection_routes import create_router as create_collection_router
