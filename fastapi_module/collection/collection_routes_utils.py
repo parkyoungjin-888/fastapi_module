@@ -59,37 +59,50 @@ def api_log_decorator(logger, res_max_size: int = 1000):
     return decorator
 
 
+def parse_comparison_value(field: str, value: str):
+    if field.endswith('_datetime'):
+        return value
+    try:
+        return float(value)
+    except ValueError:
+        return value
+
+def parse_list(value: str):
+    return [v.strip() for v in value.strip('[]').split(',')]
+
 def convert_to_mongo_query(query: list[str]):
     mongo_query = {}
+
     for q in query:
         q = urllib.parse.unquote(q)
+
         if '>=' in q:
-            field, value = q.split('>=')
-            mongo_query[field] = {'$gte': float(value)}
+            field, value = map(str.strip, q.split('>='))
+            mongo_query[field] = {'$gte': parse_comparison_value(field, value)}
         elif '<=' in q:
-            field, value = q.split('<=')
-            mongo_query[field] = {'$lte': float(value)}
+            field, value = map(str.strip, q.split('<='))
+            mongo_query[field] = {'$lte': parse_comparison_value(field, value)}
         elif '>' in q:
-            field, value = q.split('>')
-            mongo_query[field] = {'$gt': float(value)}
+            field, value = map(str.strip, q.split('>'))
+            mongo_query[field] = {'$gt': parse_comparison_value(field, value)}
         elif '<' in q:
-            field, value = q.split('<')
-            mongo_query[field] = {'$lt': float(value)}
+            field, value = map(str.strip, q.split('<'))
+            mongo_query[field] = {'$lt': parse_comparison_value(field, value)}
         elif '~' in q:
-            field, value = q.split('~')
+            field, value = map(str.strip, q.split('~'))
             mongo_query[field] = {'$regex': value}
         elif '!=' in q:
-            field, value = q.split('!=')
+            field, value = map(str.strip, q.split('!='))
             if value.startswith('[') and value.endswith(']'):
-                value = {'$nin': [v.strip(' []') for v in value.split(',')]}
+                mongo_query[field] = {'$nin': parse_list(value)}
             else:
-                value = {'$ne': value}
-            mongo_query[field] = value
+                mongo_query[field] = {'$ne': value}
         elif '=' in q:
-            field, value = q.split('=')
+            field, value = map(str.strip, q.split('='))
             if value.startswith('[') and value.endswith(']'):
-                value = {'$in': [v.strip(' []') for v in value.split(',')]}
-            mongo_query[field] = value
+                mongo_query[field] = {'$in': parse_list(value)}
+            else:
+                mongo_query[field] = value
         else:
             raise ValueError(f'Unsupported query format: {q}')
     return mongo_query
