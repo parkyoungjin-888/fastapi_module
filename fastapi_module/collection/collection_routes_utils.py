@@ -3,6 +3,7 @@ import json
 import urllib.parse
 from functools import wraps
 from pydantic import BaseModel
+from collections import defaultdict
 
 
 def dump_kwargs(kwargs: dict) -> dict:
@@ -67,42 +68,44 @@ def parse_comparison_value(field: str, value: str):
     except ValueError:
         return value
 
+
 def parse_list(value: str):
     return [v.strip() for v in value.strip('[]').split(',')]
 
+
 def convert_to_mongo_query(query: list[str]):
-    mongo_query = {}
+    mongo_query = defaultdict(dict)
 
     for q in query:
         q = urllib.parse.unquote(q)
 
         if '>=' in q:
             field, value = map(str.strip, q.split('>='))
-            mongo_query[field] = {'$gte': parse_comparison_value(field, value)}
+            mongo_query[field].update({'$gte': parse_comparison_value(field, value)})
         elif '<=' in q:
             field, value = map(str.strip, q.split('<='))
-            mongo_query[field] = {'$lte': parse_comparison_value(field, value)}
+            mongo_query[field].update({'$lte': parse_comparison_value(field, value)})
         elif '>' in q:
             field, value = map(str.strip, q.split('>'))
-            mongo_query[field] = {'$gt': parse_comparison_value(field, value)}
+            mongo_query[field].update({'$gt': parse_comparison_value(field, value)})
         elif '<' in q:
             field, value = map(str.strip, q.split('<'))
-            mongo_query[field] = {'$lt': parse_comparison_value(field, value)}
+            mongo_query[field].update({'$lt': parse_comparison_value(field, value)})
         elif '~' in q:
             field, value = map(str.strip, q.split('~'))
-            mongo_query[field] = {'$regex': value}
+            mongo_query[field].update({'$regex': value})
         elif '!=' in q:
             field, value = map(str.strip, q.split('!='))
             if value.startswith('[') and value.endswith(']'):
-                mongo_query[field] = {'$nin': parse_list(value)}
+                mongo_query[field].update({'$nin': parse_list(value)})
             else:
-                mongo_query[field] = {'$ne': value}
+                mongo_query[field].update({'$ne': value})
         elif '=' in q:
             field, value = map(str.strip, q.split('='))
             if value.startswith('[') and value.endswith(']'):
-                mongo_query[field] = {'$in': parse_list(value)}
+                mongo_query[field].update({'$in': parse_list(value)})
             else:
-                mongo_query[field] = value
+                mongo_query[field].update({'$eq': value})
         else:
             raise ValueError(f'Unsupported query format: {q}')
     return mongo_query
