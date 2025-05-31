@@ -5,7 +5,7 @@ from typing import Type
 
 from config_module.config_singleton import ConfigSingleton
 from utils_module.logger import LoggerSingleton
-from data_model_module.model_cashe_manager import ModelCacheManager
+from utils_module.cache_manager import CacheManager
 from mongodb_module.beanie_client_decorator import with_collection_client, collection_client_var
 from fastapi_module.collection.collection_routes_model import *
 from fastapi_module.collection.collection_routes_utils import api_log_decorator, convert_to_mongo_query
@@ -19,11 +19,12 @@ log_level = os.environ.get('LOG_LEVEL', 'DEBUG')
 logger = LoggerSingleton.get_logger(f'{app_config["name"]}.api', level=log_level)
 
 
-def create_router(model_manager: ModelCacheManager, data_model: Type[BaseModel]):
+def create_router(cache_manager: CacheManager, data_model_file: str, data_model: Type[BaseModel]):
     router = APIRouter()
 
-    def get_model_manager() -> ModelCacheManager:
-        return model_manager
+    def get_project_model(model_name) -> Type[BaseModel]:
+        project_model = cache_manager.get_obj(data_model_file, model_name)
+        return project_model
 
     @router.post('/', response_model=DocId)
     @api_log_decorator(logger)
@@ -109,8 +110,7 @@ def create_router(model_manager: ModelCacheManager, data_model: Type[BaseModel])
 
             project_model = None
             if project_model_name is not None:
-                _model_manager = get_model_manager()
-                project_model = _model_manager.get_model(project_model_name)
+                project_model = get_project_model(project_model_name)
 
             res = await collection_client.get_many(query=mongo_query, project_model=project_model, sort=sort,
                                                    page_size=page_size, page_num=page_num)
