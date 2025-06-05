@@ -14,6 +14,11 @@ class DocListResponse(BaseModel):
     total_count: int
 
 
+class DocUpdateOneRequest(BaseModel):
+    doc_id: str
+    set: dict
+
+
 class DocUpdateRequest(BaseModel):
     doc_id_list: list[str]
     set: dict

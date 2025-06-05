@@ -37,7 +37,8 @@ def api_log_decorator(logger, res_max_size: int = 1000):
                 logger.info({
                     'function': func.__name__,
                     'args': [a.model_dump() if isinstance(a, BaseModel) else a for a in args],
-                    'kwargs': dump_kwargs(kwargs),
+                    # 'kwargs': dump_kwargs(kwargs),
+                    'kwargs': json.dumps(kwargs, default=str),
                     'status_code': response.status_code,
                     'response': dump_response(response, res_max_size),
                     'tact_time': round(tact_time, 4),
